@@ -1,54 +1,65 @@
 require("dotenv").config();
-const express = require('express')
-const connectDB = require ("./config.js");
-// const Tasked = require ('./model.js');
-const userRoute = require ('./Routes/userRoute')
-const recordRoute = require ('./Routes/recordsRoute')
-const errorHandler = require ('./middleware/errorMiddleware')
-var cookieParser = require('cookie-parser')
+const express = require("express");
+const connectDB = require("./config.js");
+const bookRoute = require("./Routes/bookRoutes.js");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger");
+
+const userRoute = require("./Routes/userRoutes");
+
+var cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const app = express();
-const cors = require('cors');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const cors = require("cors");
+
 const corsOptions = {
-    origin: "*",
-    credentials: true,            
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: [
-       ' Access-Control-Allow-Origins ',
-        'Content-Type,', 
-        'Authorization']
-}
+  origin: "*",
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: [
+    " Access-Control-Allow-Origins ",
+    "Content-Type,",
+    "Authorization",
+  ],
+};
 
-
-
-
-const port = 3000;
+const port = 3003;
 //  connectDB();
 
-
 //middleware
-app.use (express.json());
-app.use (cookieParser());
+app.use(express.json());
+app.use(cookieParser());
 app.use(cors(corsOptions));
-app.use ('/api/users', userRoute);
-app.use ('/api/records', recordRoute);
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-//errorHandler
-app.use(errorHandler)
-
-app.get('/', (req, res) => {
-    res.send('Hello World!');
+app.post("/jwt", (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: "2hrs",
+  });
+  res.send({ token });
 });
-const startServer = async () => {
-    try {
-        await connectDB();
-        app.listen(port, () => {
-            console.log(`Example app listening at http://localhost:${port}`);
 
+app.use("/books", bookRoute);
+
+app.use("/users", userRoute);
+
+app.get("/", (req, res) => {
+  res.send("Hello World! Server is raedy!");
+});
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(port, () => {
+      console.log(`Example app listening at http://localhost:${port}`);
     });
- }
- catch (error) {
-     console.error("error:", error.message);
- }
-}
+  } catch (error) {
+    console.error("error:", error.message);
+  }
+};
 startServer();
+
+module.exports = app;
